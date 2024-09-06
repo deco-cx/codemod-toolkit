@@ -13,5 +13,5 @@
     "@std/path": "jsr:@std/path@^1.0.2",
     "@std/semver": "jsr:@std/semver@^1.0.1"
   },
-  "version": "0.0.0"
+  "version": "0.1.0"
 }
