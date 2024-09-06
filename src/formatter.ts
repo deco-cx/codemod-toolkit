@@ -1,4 +1,9 @@
-export async function format(content: string) {
+/**
+ * format content based on deno fmt
+ * @param content the string content
+ * @returns the formatted content
+ */
+export async function format(content: string): Promise<string> {
     const fmt = new Deno.Command(Deno.execPath(), {
         args: ["fmt", "-"],
         stdin: "piped",

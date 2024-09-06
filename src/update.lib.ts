@@ -56,7 +56,7 @@ async function* getImportMaps(
                 await Deno.readTextFile(importMapPath).then(JSON.parse).catch(
                     () => ({
                         imports: {},
-                    })
+                    }),
                 ),
                 importMapPath,
             ];
@@ -159,8 +159,8 @@ async function upgradeImportMapDeps(
 }
 
 export async function* updatedImportMap(
-    logs = true,
-    cwd = Deno.cwd(),
+    logs: boolean = true,
+    cwd: string = Deno.cwd(),
 ): AsyncIterableIterator<[ImportMap, string]> {
     for await (const [importMap, importMapPath] of getImportMaps(cwd)) {
         const logger = (...msg: unknown[]) =>
@@ -181,11 +181,18 @@ export async function* updatedImportMap(
     }
 }
 
+/**
+ * Upgrade dependencies in the import map (in place)
+ * @param importMap the importmap (or deno.json) to upgrade
+ * @param logs whether to log the upgrade process
+ * @param packages a regex to filter which packages to upgrade
+ * @returns a boolean indicating if any upgrades were made
+ */
 export async function upgradeDeps(
     importMap: ImportMap,
     logs = false,
     packages?: RegExp,
-) {
+): Promise<boolean> {
     let upgradeFound = await upgradeImportMapDeps(importMap, logs, packages);
     if (!("@deco/deco" in importMap.imports)) {
         const { "deco/": _, ...imports } = denoJSON.imports;
@@ -215,7 +222,7 @@ const latestStdVersion = async () => {
 
 const FRESH_CONFIG = "fresh.config.ts";
 
-const updgradeStd = async (cwd = Deno.cwd()) => {
+const updgradeStd = async (cwd: string = Deno.cwd()) => {
     const freshConfigFile = await Deno.readTextFile(
         join(cwd, FRESH_CONFIG),
     ).catch((_err) => null);
@@ -233,7 +240,10 @@ const updgradeStd = async (cwd = Deno.cwd()) => {
         }
     }
 };
-export async function update(checkStdUpdates = false, cwd = Deno.cwd()) {
+export async function update(
+    checkStdUpdates = false,
+    cwd: string = Deno.cwd(),
+) {
     for await (
         const [importMap, importMapPath] of updatedImportMap(true, cwd)
     ) {
