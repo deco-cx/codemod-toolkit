@@ -482,7 +482,7 @@ export const codeMod = async <
   const fsNext: Record<string, string> = {};
 
   for (const target of targets) {
-    for await (const file of ctx.fs.walk(Deno.cwd(), target.options)) {
+    for await (const file of ctx.fs.walk(ctx.fs.cwd(), target.options)) {
       if (file.isFile) {
         const from: TextFile = {
           content: fsNext[file.path] ??
