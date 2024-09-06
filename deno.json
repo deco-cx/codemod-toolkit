@@ -1,6 +1,5 @@
 {
   "name": "@deco/codemod-toolkit",
-  "version": "0.0.0",
   "exports": {
     ".": "./mod.ts",
     "./pkg": "./src/update.lib.ts",
@@ -13,5 +12,6 @@
     "@std/fs": "jsr:@std/fs@^1.0.1",
     "@std/path": "jsr:@std/path@^1.0.2",
     "@std/semver": "jsr:@std/semver@^1.0.1"
-  }
+  },
+  "version": "0.0.0"
 }
