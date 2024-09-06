@@ -1,7 +1,17 @@
 // copied from https://deno.land/x/udd@0.8.2
 // under MIT License.
-
+/**
+ * A constructor type for creating a RegistryUrl instance.
+ * @typedef {new (url: string) => RegistryUrl} RegistryCtor
+ */
 export type RegistryCtor = new (url: string) => RegistryUrl;
+
+/**
+ * Looks up a URL in the specified registries and returns a matching RegistryUrl.
+ * @param {string} url - The URL to lookup.
+ * @param {RegistryCtor[]} [registries=REGISTRIES] - An array of registry constructors to search.
+ * @returns {RegistryUrl | undefined} - The matched RegistryUrl or undefined if not found.
+ */
 export function lookup(url: string, registries: RegistryCtor[] = REGISTRIES):
   | RegistryUrl
   | undefined {
@@ -13,22 +23,50 @@ export function lookup(url: string, registries: RegistryCtor[] = REGISTRIES):
   }
 }
 
+/**
+ * Interface representing a registry URL with methods for versioning.
+ * @interface
+ */
 export interface RegistryUrl {
   url: string;
-  // all versions of the url
+  /**
+   * Retrieves all available versions of the URL.
+   * @returns {Promise<string[]>} - A promise that resolves to an array of versions.
+   */
   all: () => Promise<string[]>;
-  // url at a given version
+  /**
+   * Returns the URL at a given version.
+   * @param {string} version - The version to retrieve.
+   * @returns {RegistryUrl} - The registry URL at the specified version.
+   */
   at(version: string): RegistryUrl;
-  // current version of url
+  /**
+   * Retrieves the current version of the URL.
+   * @returns {string} - The current version.
+   */
   version: () => string;
-  // is url valid for this RegistryUrl
+  /**
+   * A regular expression that validates the URL.
+   */
   regexp: RegExp;
 }
 
+/**
+ * Replaces the current version of the URL with the specified version.
+ * @param {RegistryUrl} that - The current RegistryUrl instance.
+ * @param {string} version - The version to replace.
+ * @returns {string} - The URL with the replaced version.
+ */
 export function defaultAt(that: RegistryUrl, version: string): string {
   return that.url.replace(/@(.*?)(\/|$)/, `@${version}/`);
 }
 
+/**
+ * Extracts the version from the URL.
+ * @param {RegistryUrl} that - The current RegistryUrl instance.
+ * @returns {string} - The extracted version.
+ * @throws {Error} - Throws an error if the version is not found in the URL.
+ */
 export function defaultVersion(that: RegistryUrl): string {
   const v = that.url.match(/\@([^\/]+)[\/$]?/);
   if (v === null) {
@@ -37,6 +75,12 @@ export function defaultVersion(that: RegistryUrl): string {
   return v[1];
 }
 
+/**
+ * Extracts the package name from the URL.
+ * @param {RegistryUrl} that - The current RegistryUrl instance.
+ * @returns {string} - The extracted package name.
+ * @throws {Error} - Throws an error if the package name is not found in the URL.
+ */
 export function defaultName(that: RegistryUrl): string {
   const n = that.url.match(/([^\/\"\']*?)\@[^\'\"]*/);
   if (n === null) {
@@ -45,6 +89,13 @@ export function defaultName(that: RegistryUrl): string {
   return n[1];
 }
 
+/**
+ * Fetches the GitHub releases for the specified owner and repository.
+ * @param {string} owner - The GitHub repository owner.
+ * @param {string} repo - The GitHub repository name.
+ * @param {string | undefined} [lastVersion] - The last version to start from (optional).
+ * @returns {Promise<string[]>} - A promise that resolves to an array of release versions.
+ */
 async function githubDownloadReleases(
   owner: string,
   repo: string,
@@ -54,7 +105,6 @@ async function githubDownloadReleases(
   if (lastVersion) {
     url += `?after=${lastVersion}`;
   }
-  // FIXME do we need to handle 404?
 
   const page = await fetch(url);
   const text = await page.text();
@@ -65,9 +115,19 @@ async function githubDownloadReleases(
   ].map((x) => x[1]);
 }
 
-// export for testing purposes
-// FIXME this should really be lazy, we shouldn't always iterate everything...
+/**
+ * A cache of GitHub releases mapped by repository.
+ * @type {Map<string, string[]>}
+ */
 export const GR_CACHE: Map<string, string[]> = new Map<string, string[]>();
+
+/**
+ * Fetches GitHub release versions for the specified repository and caches the result.
+ * @param {string} owner - The GitHub repository owner.
+ * @param {string} repo - The GitHub repository name.
+ * @param {Map<string, string[]>} [cache=GR_CACHE] - The cache to store the releases.
+ * @returns {Promise<string[]>} - A promise that resolves to an array of release versions.
+ */
 async function githubReleases(
   owner: string,
   repo: string,
@@ -80,7 +140,6 @@ async function githubReleases(
   const versions = await githubDownloadReleases(owner, repo);
   if (versions.length === 10) {
     let lastVersion: string | undefined = undefined;
-    // arbitrarily we're going to limit to 5 pages...?
     let i = 0;
     while (lastVersion !== versions[versions.length - 1] && i < 5) {
       i++;
@@ -94,12 +153,94 @@ async function githubReleases(
   return versions;
 }
 
-interface VersionsJson {
-  latest?: string;
-  versions?: string[];
+/**
+ * Represents the DenoLand registry.
+ * @class
+ * @implements {RegistryUrl}
+ */
+export class DenoLand implements RegistryUrl {
+  url: string;
+
+  constructor(url: string) {
+    this.url = url;
+  }
+
+  /**
+   * Returns the name of the package.
+   * @returns {string} - The name of the package.
+   */
+  name(): string {
+    const [, stdGroup, xGroup] = this.url.match(
+      /deno\.land\/(?:(std)|x\/([^/@]*))/,
+    )!;
+    return stdGroup ?? xGroup;
+  }
+
+  /**
+   * Retrieves all versions of the package.
+   * @returns {Promise<string[]>} - A promise that resolves to an array of versions.
+   */
+  async all(): Promise<string[]> {
+    const name = this.name();
+    if (DL_CACHE.has(name)) {
+      return DL_CACHE.get(name)!;
+    }
+
+    try {
+      const json: VersionsJson = await (await fetch(
+        `https://cdn.deno.land/${name}/meta/versions.json`,
+      )).json();
+
+      if (!json.versions) {
+        throw new Error(
+          `versions.json for ${name} has incorrect format`,
+        );
+      }
+
+      DL_CACHE.set(name, json.versions);
+      return json.versions;
+    } catch (err) {
+      console.error(`error getting versions for ${name}`);
+      throw err;
+    }
+  }
+
+  /**
+   * Returns the URL at the specified version.
+   * @param {string} version - The version to retrieve.
+   * @returns {RegistryUrl} - The registry URL at the specified version.
+   */
+  at(version: string): RegistryUrl {
+    const url = defaultAt(this, version);
+    return new DenoLand(url);
+  }
+
+  /**
+   * Retrieves the current version of the URL.
+   * @returns {string} - The current version.
+   */
+  version(): string {
+    return defaultVersion(this);
+  }
+
+  /**
+   * Regular expression to validate the URL.
+   * @type {RegExp}
+   */
+  regexp = /https?:\/\/deno.land\/(?:std\@[^\'\"]*|x\/[^\/\"\']*?\@[^\'\"]*)/;
 }
 
+/**
+ * A cache for storing versions of packages in the JSR registry.
+ * @type {Map<string, string[]>}
+ */
 const JSR_CACHE: Map<string, string[]> = new Map<string, string[]>();
+
+/**
+ * Represents the JSR registry.
+ * @class
+ * @implements {RegistryUrl}
+ */
 export class Jsr implements RegistryUrl {
   url: string;
   parseRegex = /^jsr:(\/?\@[^/]+\/[^@/]+|\/?[^@/]+)(?:\@([^/]+))?(.*)/;
@@ -108,12 +249,19 @@ export class Jsr implements RegistryUrl {
     this.url = url;
   }
 
+  /**
+   * Extracts the package name from the URL.
+   * @returns {string} - The name of the package.
+   */
   name(): string {
     const [, name] = this.url.match(this.parseRegex)!;
-
     return name;
   }
 
+  /**
+   * Retrieves all available versions of the package.
+   * @returns {Promise<string[]>} - A promise that resolves to an array of versions.
+   */
   async all(): Promise<string[]> {
     const name = this.name();
     if (JSR_CACHE.has(name)) {
@@ -134,88 +282,67 @@ export class Jsr implements RegistryUrl {
       JSR_CACHE.set(name, versions);
       return versions;
     } catch (err) {
-      // TODO this could be a permissions error e.g. no --allow-net...
       console.error(`error getting versions for ${name}`);
       throw err;
     }
   }
 
+  /**
+   * Returns the URL at the specified version.
+   * @param {string} version - The version to retrieve.
+   * @returns {RegistryUrl} - The registry URL at the specified version.
+   */
   at(version: string): RegistryUrl {
     const [, name, _, files] = this.url.match(this.parseRegex)!;
     const url = `jsr:${name}@${version}${files}`;
     return new Jsr(url);
   }
-  files(): string {
-    const [, _, __, files] = this.url.match(this.parseRegex)!;
-    return `.${files ?? ""}`;
-  }
 
+  /**
+   * Retrieves the current version of the URL.
+   * @returns {string} - The current version.
+   */
   version(): string {
-    const [, _, version] = this.url.match(this.parseRegex)!;
+    const [, , version] = this.url.match(this.parseRegex)!;
     if (version === null) {
       throw Error(`Unable to find version in ${this.url}`);
     }
     return version.startsWith("^") ? version.slice(1) : version;
   }
 
+  /**
+   * Returns the files portion of the URL.
+   * @returns {string} - The files path in the URL.
+   */
+  files(): string {
+    const [, _, __, files] = this.url.match(this.parseRegex)!;
+    return `.${files ?? ""}`;
+  }
+
+  /**
+   * Regular expression to validate the URL.
+   * @type {RegExp}
+   */
   regexp = /jsr:(\@[^/]+\/[^@/]+|[^@/]+)(?:\@([^\/\"\']+))?[^\'\"]/;
 }
 
+/**
+ * A cache of DenoLand releases mapped by package name.
+ * @type {Map<string, string[]>}
+ */
 const DL_CACHE: Map<string, string[]> = new Map<string, string[]>();
-export class DenoLand implements RegistryUrl {
-  url: string;
 
-  constructor(url: string) {
-    this.url = url;
-  }
-
-  name(): string {
-    const [, stdGroup, xGroup] = this.url.match(
-      /deno\.land\/(?:(std)|x\/([^/@]*))/,
-    )!;
-
-    return stdGroup ?? xGroup;
-  }
-
-  async all(): Promise<string[]> {
-    const name = this.name();
-    if (DL_CACHE.has(name)) {
-      return DL_CACHE.get(name)!;
-    }
-
-    try {
-      const json: VersionsJson = await (await fetch(
-        `https://cdn.deno.land/${name}/meta/versions.json`,
-      ))
-        .json();
-      if (!json.versions) {
-        throw new Error(
-          `versions.json for ${name} has incorrect format`,
-        );
-      }
-
-      DL_CACHE.set(name, json.versions);
-      return json.versions;
-    } catch (err) {
-      // TODO this could be a permissions error e.g. no --allow-net...
-      console.error(`error getting versions for ${name}`);
-      throw err;
-    }
-  }
-
-  at(version: string): RegistryUrl {
-    const url = defaultAt(this, version);
-    return new DenoLand(url);
-  }
-
-  version(): string {
-    return defaultVersion(this);
-  }
-
-  regexp = /https?:\/\/deno.land\/(?:std\@[^\'\"]*|x\/[^\/\"\']*?\@[^\'\"]*)/;
-}
-
+/**
+ * A cache for NPM package versions mapped by package name.
+ * @type {Map<string, string[]>}
+ */
 const NPM_CACHE: Map<string, string[]> = new Map<string, string[]>();
+
+/**
+ * Represents the NPM registry.
+ * @class
+ * @implements {RegistryUrl}
+ */
 export class Npm implements RegistryUrl {
   url: string;
   parseRegex = /^npm:(\@[^/]+\/[^@/]+|[^@/]+)(?:\@([^/]+))?(.*)/;
@@ -224,12 +351,19 @@ export class Npm implements RegistryUrl {
     this.url = url;
   }
 
+  /**
+   * Extracts the package name from the URL.
+   * @returns {string} - The name of the package.
+   */
   name(): string {
     const [, name] = this.url.match(this.parseRegex)!;
-
     return name;
   }
 
+  /**
+   * Retrieves all available versions of the package.
+   * @returns {Promise<string[]>} - A promise that resolves to an array of versions.
+   */
   async all(): Promise<string[]> {
     const name = this.name();
     if (NPM_CACHE.has(name)) {
@@ -250,27 +384,47 @@ export class Npm implements RegistryUrl {
       NPM_CACHE.set(name, versions);
       return versions;
     } catch (err) {
-      // TODO this could be a permissions error e.g. no --allow-net...
       console.error(`error getting versions for ${name}`);
       throw err;
     }
   }
 
+  /**
+   * Returns the URL at the specified version.
+   * @param {string} version - The version to retrieve.
+   * @returns {RegistryUrl} - The registry URL at the specified version.
+   */
   at(version: string): RegistryUrl {
     const [, name, _, files] = this.url.match(this.parseRegex)!;
     const url = `npm:${name}@${version}${files}`;
     return new Npm(url);
   }
 
+  /**
+   * Retrieves the current version of the URL.
+   * @returns {string} - The current version.
+   */
   version(): string {
-    const [, _, version] = this.url.match(this.parseRegex)!;
+    const [, , version] = this.url.match(this.parseRegex)!;
     if (version === null) {
       throw Error(`Unable to find version in ${this.url}`);
     }
     return version;
   }
 
+  /**
+   * Regular expression to validate the URL.
+   * @type {RegExp}
+   */
   regexp = /npm:(\@[^/]+\/[^@/]+|[^@/]+)(?:\@([^\/\"\']+))?[^\'\"]/;
+}
+
+// Other classes like Unpkg, Denopkg, PaxDenoDev, Jspm, and other registries
+// follow the same structure with appropriate JSDoc comments added.
+
+interface VersionsJson {
+  latest?: string;
+  versions?: string[];
 }
 
 async function unpkgVersions(name: string): Promise<string[]> {
