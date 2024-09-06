@@ -87,6 +87,9 @@ export interface CodeModContext {
   };
 }
 
+export type OptPath<TType extends { path: string }> = Omit<TType, "path"> & {
+  path?: string;
+};
 /**
  * A function type for patching text files.
  * @template TContext The type of the CodeModContext.
@@ -96,7 +99,7 @@ export type FilePatcher<
 > = (
   txt: TextFile,
   ctx: TContext,
-) => Promise<TextFile | Delete> | (TextFile | Delete);
+) => Promise<OptPath<TextFile> | Delete> | (OptPath<TextFile> | Delete);
 
 /**
  * Represents a JSON file.
@@ -120,7 +123,9 @@ export type JsonPatcher<
 > = (
   json: JSONFile<TIn>,
   ctx: TContext,
-) => Promise<JSONFile<TOut> | Delete> | (JSONFile<TOut> | Delete);
+) =>
+  | Promise<OptPath<JSONFile<TOut>> | Delete>
+  | (OptPath<JSONFile<TOut>> | Delete);
 
 /**
  * Represents a TypeScript file.
@@ -139,7 +144,7 @@ export type TsPatcher<
 > = (
   text: TsFile,
   ctx: TContext,
-) => Promise<TsFile | Delete> | (TsFile | Delete);
+) => Promise<OptPath<TsFile> | Delete> | (OptPath<TsFile> | Delete);
 
 /**
  * Creates a FilePatcher for JSON files.
@@ -484,7 +489,7 @@ export const codeMod = async <
   for (const target of targets) {
     for await (const file of ctx.fs.walk(ctx.fs.cwd(), target.options)) {
       if (file.isFile) {
-        const from: TextFile = {
+        const from = {
           content: fsNext[file.path] ??
             await ctx.fs.readTextFile(file.path),
           path: file.path,
@@ -496,6 +501,7 @@ export const codeMod = async <
         if ("deleted" in to) {
           fsNext[file.path] = "";
         } else {
+          to.path ??= from.path;
           fsNext[from.path] = "";
           fsNext[to.path] = to.content;
         }
