@@ -4,7 +4,10 @@
  * @param defaultsTo the default version if the request fails
  * @returns the JSR specifier e.g jsr:@deco/deco@^1.0.0
  */
-export const jsrLatest = async (packageName: string, defaultsTo = "1") => {
+export const jsrLatest = async (
+    packageName: string,
+    defaultsTo = "1",
+): Promise<string> => {
     const versions: { latest: string } = await fetch(
         `https://jsr.io/${packageName}/meta.json`,
     ).then(
