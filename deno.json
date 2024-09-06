@@ -3,6 +3,7 @@
   "exports": {
     ".": "./mod.ts",
     "./pkg": "./src/update.lib.ts",
+    "./registry": "./src/registry.ts",
     "./formatter": "./src/formatter.ts",
     "./deno-json": "./src/denoJSON.ts"
   },
