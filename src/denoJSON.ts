@@ -27,3 +27,5 @@ export interface CompilerOptions {
     jsx: string;
     jsxImportSource: string;
 }
+
+export { jsrLatest } from "./utils.ts";
