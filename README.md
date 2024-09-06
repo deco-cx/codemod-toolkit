@@ -1,3 +1,7 @@
+<p align="center">
+  <a href="https://jsr.io/@deco/codemod-toolkit" target="_blank"><img alt="jsr" src="https://jsr.io/badges/@deco/codemod-toolkit" /></a>
+  &nbsp;
+</p>
 # CodeMod Toolkit
 
 **CodeMod Toolkit** is a powerful utility designed to streamline file
