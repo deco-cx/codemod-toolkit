@@ -26,16 +26,16 @@ modern ecosystems.
 import { codeMod, rewriteImports } from "@deco/codemod-toolkit";
 
 const symbolMap = {
-    "old-module": {
-        "oldExport": {
-            moduleSpecifier: "new-module",
-        },
+  "old-module": {
+    "oldExport": {
+      moduleSpecifier: "new-module",
     },
+  },
 };
 
 await codeMod({
-    name: "Rewrite Imports",
-    description: "Rewrites import statements based on a symbol map",
-    targets: [rewriteImports(symbolMap)],
+  name: "Rewrite Imports",
+  description: "Rewrites import statements based on a symbol map",
+  targets: [rewriteImports(symbolMap)],
 });
 ```
