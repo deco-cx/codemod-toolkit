@@ -4,6 +4,10 @@ on:
     tags:
       - "*" # Keeps the original trigger
   workflow_dispatch: # Allows manual dispatch with parameters
+    inputs:
+      tag_name:
+        description: "The tag to be published"
+        required: true
 jobs:
   publish:
     runs-on: ubuntu-latest
