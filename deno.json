@@ -17,5 +17,5 @@
     "check": "deno fmt && deno lint --fix && deno check mod.ts"
   },
   "lock": false,
-  "version": "0.0.0"
+  "version": "0.1.0"
 }
