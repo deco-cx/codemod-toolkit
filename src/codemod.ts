@@ -197,13 +197,13 @@ export const denoJSON = <
  */
 export const upgradeDeps = <
   TContext extends CodeModContext = CodeModContext,
->(packagesToCheck?: RegExp): CodeModTarget<TContext> => {
+>(packagesToCheck?: RegExp, logs: boolean = false): CodeModTarget<TContext> => {
   return denoJSON(async (denoJSONFile) => {
     const updatedDenoJSON = {
       ...denoJSONFile.content,
       imports: denoJSONFile.content.imports ?? {},
     };
-    await upgradeImportMapDeps(updatedDenoJSON, false, packagesToCheck);
+    await upgradeImportMapDeps(updatedDenoJSON, logs, packagesToCheck);
     return {
       path: denoJSONFile.path,
       content: updatedDenoJSON,
@@ -342,6 +342,8 @@ export interface CodeMod<
   name?: string;
   description?: string;
   ctx: TContext;
+  // if it should prompt user a confirmation prompt.
+  yPrompt?: boolean;
 }
 
 /**
@@ -371,8 +373,10 @@ const applyPatch = async (p: FileMod, ctx: CodeModContext): Promise<void> => {
  * @param {CodeMod} mod - The code modification.
  * @returns {Promise<void>} A promise that resolves when the code modification is applied.
  */
-const applyCodeMod = async ({ patches, name, description, ctx }: CodeMod) => {
-  const yesToAll = Boolean(Deno.args.find((x) => x === "--y"));
+const applyCodeMod = async (
+  { patches, name, description, ctx, yPrompt }: CodeMod,
+) => {
+  const yesToAll = !yPrompt || Boolean(Deno.args.find((x) => x === "--y"));
   for (const patch of patches) {
     if (isDelete(patch)) {
       console.log(`🚨 ${brightRed(patch.from.path)} will be deleted.`);
@@ -450,6 +454,8 @@ export interface CodeModOptions<
   description?: string;
   context?: TContext;
   targets: CodeModTarget<TContext & CodeModContext>[];
+  // if it should prompt user a confirmation prompt.
+  yPrompt?: boolean;
 }
 
 const DEFAULT_FS: CodeModContext["fs"] = {
@@ -481,6 +487,7 @@ export const codeMod = async <
   description,
   targets,
   context,
+  yPrompt,
 }: CodeModOptions<TContext>): Promise<void> => {
   const patches: FileMod[] = [];
   const ctx = { fs: DEFAULT_FS, ...context } ?? ({ fs: DEFAULT_FS });
@@ -509,5 +516,5 @@ export const codeMod = async <
       }
     }
   }
-  await applyCodeMod({ name, description, patches, ctx });
+  await applyCodeMod({ name, description, patches, ctx, yPrompt });
 };
