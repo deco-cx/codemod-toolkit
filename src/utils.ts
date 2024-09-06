@@ -5,17 +5,17 @@
  * @returns the JSR specifier e.g jsr:@deco/deco@^1.0.0
  */
 export const jsrLatest = async (
-    packageName: string,
-    defaultsTo = "1",
+  packageName: string,
+  defaultsTo = "1",
 ): Promise<string> => {
-    const versions: { latest: string } = await fetch(
-        `https://jsr.io/${packageName}/meta.json`,
-    ).then(
-        (resp) => resp.json(),
-    ).catch(() => {
-        return {
-            latest: defaultsTo,
-        };
-    });
-    return `jsr:${packageName}@^${versions.latest}`;
+  const versions: { latest: string } = await fetch(
+    `https://jsr.io/${packageName}/meta.json`,
+  ).then(
+    (resp) => resp.json(),
+  ).catch(() => {
+    return {
+      latest: defaultsTo,
+    };
+  });
+  return `jsr:${packageName}@^${versions.latest}`;
 };
