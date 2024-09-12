@@ -170,7 +170,7 @@ async ({ path, content }, ctx) => {
   }
   return {
     path: result.path,
-    content: JSON.stringify(result.content, null, 2),
+    content: `${JSON.stringify(result.content, null, 2)}\n`,
   };
 };
 
