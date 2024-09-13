@@ -246,7 +246,10 @@ async (txt, ctx) => {
  */
 export type SymbolMap = Record<
   string,
-  Record<string, { moduleSpecifier: string; isTypeOnly?: boolean }>
+  Record<
+    string,
+    { moduleSpecifier: string; isTypeOnly?: boolean; name?: string }
+  >
 >;
 
 /**
@@ -271,11 +274,12 @@ export const rewriteImport = (
           const name = namedImport.getName();
           const alias = namedImport.getAliasNode()?.getText();
           const isTypeOnly = namedImport.isTypeOnly();
-          if (symbolMapForModule[name]) {
+          const rewriter = symbolMapForModule[name];
+          if (rewriter) {
             const {
               moduleSpecifier: newModuleSpecifier,
               isTypeOnly: newIsTypeOnly,
-            } = symbolMapForModule[name];
+            } = rewriter;
             namedImport.remove();
             if (!newImports[newModuleSpecifier]) {
               newImports[newModuleSpecifier] = {
@@ -287,8 +291,8 @@ export const rewriteImport = (
             const namedImports = newImports[newModuleSpecifier].namedImports;
             if (Array.isArray(namedImports)) {
               namedImports.push({
-                name,
-                alias,
+                name: rewriter.name ?? name,
+                alias: alias ?? name,
                 isTypeOnly: newIsTypeOnly ?? isTypeOnly,
               });
             }
