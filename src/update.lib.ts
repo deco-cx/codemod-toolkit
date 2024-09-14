@@ -97,6 +97,7 @@ export async function upgradeDeps(
             current: currentVersion,
           },
         } = info;
+        console.log({ currentVersion, latestVersion });
 
         if (
           !semver.canParse(currentVersion) &&

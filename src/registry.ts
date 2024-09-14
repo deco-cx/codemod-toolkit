@@ -1,5 +1,8 @@
 // copied from https://deno.land/x/udd@0.8.2
 // under MIT License.
+
+import { compare, parse } from "@std/semver";
+
 /**
  * A constructor type for creating a RegistryUrl instance.
  * @typedef {new (url: string) => RegistryUrl} RegistryCtor
@@ -278,7 +281,9 @@ export class Jsr implements RegistryUrl {
         );
       }
 
-      const versions = Object.keys(json.versions).sort().reverse();
+      const versions = Object.keys(json.versions).sort((vsrA, vsrB) =>
+        compare(parse(vsrB), parse(vsrA))
+      );
       JSR_CACHE.set(name, versions);
       return versions;
     } catch (err) {
