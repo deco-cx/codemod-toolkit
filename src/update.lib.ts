@@ -187,3 +187,5 @@ export async function update(
     );
   }
 }
+
+export { pkgInfo };
