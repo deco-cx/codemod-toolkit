@@ -290,9 +290,13 @@ export const rewriteImport = (
             }
             const namedImports = newImports[newModuleSpecifier].namedImports;
             if (Array.isArray(namedImports)) {
+              // this avoids breaking change when referencing the same symbol multiple times
+              const nameAsAlias = typeof rewriter.name !== "undefined"
+                ? name
+                : undefined;
               namedImports.push({
                 name: rewriter.name ?? name,
-                alias: alias ?? name,
+                alias: alias ?? nameAsAlias,
                 isTypeOnly: newIsTypeOnly ?? isTypeOnly,
               });
             }
