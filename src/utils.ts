@@ -7,6 +7,7 @@
 export const jsrLatest = async (
   packageName: string,
   defaultsTo = "1",
+  caret?: boolean,
 ): Promise<string> => {
   const versions: { latest: string } = await fetch(
     `https://jsr.io/${packageName}/meta.json`,
@@ -17,5 +18,5 @@ export const jsrLatest = async (
       latest: defaultsTo,
     };
   });
-  return `jsr:${packageName}@^${versions.latest}`;
+  return `jsr:${packageName}@${caret ? "ˆ" : ""}${versions.latest}`;
 };
