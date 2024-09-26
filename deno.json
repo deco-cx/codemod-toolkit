@@ -15,7 +15,8 @@
     "@std/semver": "jsr:@std/semver@^1.0.1"
   },
   "tasks": {
-    "check": "deno fmt && deno lint --fix && deno check mod.ts"
+    "check": "deno fmt && deno lint --fix && deno check mod.ts",
+    "release": "deno run -A jsr:@deco/scripts/release"
   },
   "lock": false,
   "version": "0.3.2"
