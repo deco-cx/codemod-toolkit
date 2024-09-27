@@ -1,5 +1,5 @@
 import { brightGreen, brightRed, brightYellow, gray } from "@std/fmt/colors";
-import { ensureFile, walk } from "@std/fs";
+import { ensureFile, exists, walk } from "@std/fs";
 import type { WalkOptions } from "@std/fs/walk";
 import * as diff from "npm:diff@5.1.0";
 import {
@@ -79,6 +79,7 @@ const isPatch = (f: FileMod): f is PatchFileMod => {
 export interface CodeModContext {
   fs: {
     cwd: () => string;
+    exists: (path: string) => Promise<boolean>;
     remove: (path: string) => Promise<void>;
     ensureFile: (path: string) => Promise<void>;
     writeTextFile: (path: string, content: string) => Promise<void>;
@@ -473,6 +474,7 @@ const DEFAULT_FS: CodeModContext["fs"] = {
   writeTextFile: Deno.writeTextFile,
   readTextFile: Deno.readTextFile,
   walk: walk,
+  exists: exists,
 };
 
 /**
@@ -500,6 +502,14 @@ export const codeMod = async <
   const patches: FileMod[] = [];
   const ctx = { fs: DEFAULT_FS, ...context } ?? ({ fs: DEFAULT_FS });
   const fsNext: Record<string, string> = {};
+  const readTextFile = ctx.fs.readTextFile.bind(ctx.fs);
+  ctx.fs.readTextFile = async (path: string) =>
+    fsNext[path] ?? await readTextFile(path);
+  const exists = ctx.fs.exists.bind(ctx.fs);
+
+  ctx.fs.exists = async (path: string) => {
+    return path in fsNext || await exists(path);
+  };
 
   for (const target of targets) {
     for await (const file of ctx.fs.walk(ctx.fs.cwd(), target.options)) {
